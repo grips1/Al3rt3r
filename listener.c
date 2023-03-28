@@ -1,49 +1,59 @@
-/* Notes for future exploration:
-* Make the listener a header file, then perform the socket creation, listening, 
-etc. through the header file. Makes this project easier to maintain lol 
-
-
-*/
-
-
-
+#include <pcap.h>
 #include <stdio.h>
-#include <sys/socket.h>
-#include <sys/types.h> /* Included only for portability reasons. If this program were running on Linux strictly, it wouldn't be necessary.  */
-#include <arpa/inet.h>
+#include <stdlib.h>
 
-
+void print_IF_list(pcap_if_t* IF_list) //works
+{
+    int count = 1;
+	while(IF_list != NULL)
+    {
+        printf("IF Number: %d\nName: %s\n", count, IF_list->name);
+        count++;
+        IF_list = IF_list->next;
+    }
+}
 
 int main()
 {
-	//create socket file descriptor + address options
-	int sockfd = socket(AF_INET, SOCK_STREAM, 0);/* not AF_UNIX, "local" means on the same machine */
-	if(!sockfd)
+	pcap_if_t* IF_list;
+	char error_buffer[PCAP_ERRBUF_SIZE];
+	printf("Initiliasing...\n");
+	if(pcap_init(PCAP_MMAP_32BIT, error_buffer) != 0)
 	{
-		perror("Sockfd");
+		printf("Error initialising! See below:\n%s", error_buffer);
 		return -1;
 	}
-	int PORT = 6969;
-	struct sockaddr_in mysock = {0};
-	mysock.sin_family = AF_INET;
-	mysock.sin_port = htons(22);
-	inet_aton("192.168.14.82", (struct in_addr *)& mysock.sin_addr.s_addr);
-	socklen_t mysock_size = sizeof(mysock);
-	if((bind(sockfd, (struct sockaddr*)& mysock, mysock_size) < 0))
+ 
+	printf("Creating Interface list...\n");
+	pcap_findalldevs(&IF_list, error_buffer); //reminder to add handler
+	
+	printf("The following are usable pcap interfaces:\n\n");
+	print_IF_list(IF_list);
+	pcap_freealldevs(IF_list);
+	printf("Creating handler...\n");
+	pcap_t* handler = pcap_create("enp0s3", error_buffer);
+	if(handler == NULL)
 	{
-		perror("Socket Binding");
+		printf("An error has occured while creating the handler! See below:\n%s\n", error_buffer);
 		return -1;
 	}
-	if((listen(sockfd, 1)) < 0) 
+	pcap_set_snaplen(handler, 65535);
+	int temp;
+	printf("Setting immediate mode to handler...\n");
+	if((temp = pcap_set_immediate_mode(handler, 1)) == 0)
+		printf("Immediate mode set successfully.\n");
+	else
+		printf("Error setting immediate mode...\n");
+	
+	if((temp = pcap_activate(handler)) < 0)
 	{
-		perror("Fatal Listening Error");
+		printf("Fatal error activating handler! Did you use the magic word?\n");
+		printf("Error code:%d\n", temp);
 		return -1;
 	}
-	accept(sockfd, (struct sockaddr*) &mysock, &mysock_size);
+	else if(temp > 0) printf("Handler activated with errors.\n");
+	else printf("Handler activated flawlessly.\n");
+	
+
 	return 0;
-
-
-
-
-
 }
