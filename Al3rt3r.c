@@ -68,11 +68,11 @@ static unsigned int scan_detect_hook_func(void* priv,
 	if(iph->protocol != IPPROTO_TCP) return NF_ACCEPT; //if not TCP
 	tcph = tcp_hdr(sk_buff);
 	s_addr = ntohl(iph->saddr);
-	d_addr = ntohl(iph->daddr);
+	//d_addr = ntohl(iph->daddr);
 	if(tcph->syn && !(tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin) && syn_history.src_addr == s_addr)//SYN only TCP packet
 	{
 		//instead of printing an alert to kernel logs, implement an acoustic/visual alarm
-		if(syn_history.src_addr == s_addr && (current_packet_time - syn_history.timestamp) <= SCAN_TIMEOUT)
+		if((current_packet_time - syn_history.timestamp) <= SCAN_TIMEOUT)
 		//current time - last packet time from host
 		{
 			syn_history.counter++;
