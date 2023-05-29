@@ -39,6 +39,14 @@ p_history syn_history,
 		  xmas_history,
 		  null_history;
 
+void prints(u32 address)
+{
+    struct in_addr addr;
+    addr.s_addr = htonl(address);
+    printk(KERN_WARNING "Deteced scan from source address:%pI4\n", &addr);
+}
+
+
 static unsigned int scan_detect_hook_func(const struct nf_hook_ops *ops, //handler? 
 								struct sk_buff *skb, //captured packet
 								const struct net_device *in, //incoming interface
@@ -65,7 +73,8 @@ static unsigned int scan_detect_hook_func(const struct nf_hook_ops *ops, //handl
 			syn_history.counter++;
 			if(syn_history.counter == SYN_SCAN_THRESH) //SYN_SCAN_THRESH amount of SYN packets from single host
 			{
-				printk(KERN_ALERT "!!!!!\nSYN Scan DETECTED from source address:%pI4h\n!!!!!", syn_history.src_addr);
+				printk(KERN_ALERT "!!!!!\nSYN Scan DETECTED\n!!!!!");
+				prints(syn_history.src_addr);
 				syn_history.counter = 0;
 			}
 		}
