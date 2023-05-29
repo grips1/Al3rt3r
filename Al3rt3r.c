@@ -2,12 +2,15 @@
 //We need to add a time gap for scans to avoid setting off a dozen false positives.
 //If the time diff between the packets is less than 5 seconds?
 //So if(current_time_of_current_packet - syn_history.timestamp <= 5 sec) counter++;		?
+#include <linux/ip.h>
+#include <linux/tcp.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
 #include <linux/netfilter.h>
+#include <linux/netfilter_ipv4.h
 #include <linux/time.h>
 
 #define XMAS_SCAN_THRESH 5
@@ -25,7 +28,7 @@ static struct nf_hook_ops nfho;
 typedef struct packet_history
 {
 	u32 src_addr;
-	struct timespec timestamp; //getnstimeofday(&timestamp) 	
+	ktime_t timestamp; //getnstimeofday(&timestamp) 	
 	//timestamp is only supposed to hold the time, not be used in the function.
 	//ktime_t? ^ apparently an ordinary unsigned long int ought to do it.	
 	//why not make both current_packet_time and p_history.timestamp struct timespecs and just use the sec members?
@@ -45,8 +48,8 @@ static unsigned int scan_detect_hook_func(const struct nf_hook_ops *ops, //handl
 	struct iphdr* iph;
 	struct tcphdr* tcph;
 	u32 saddr, daddr;
-	struct timespec current_packet_time;
-	getnstime(&current_packet_time); //seconds since unix epoch
+	ktime_t current_packet_time;
+	current_packet_time = ktime_get_real(); //seconds since unix epoch
 	if(!skb) return NF_ACCEPT; //if packet's empty
 	iph = ip_hdr(skb);
 	if(iph->protocol != IPPROTO_TCP) return NF_ACCPET; //if not TCP
