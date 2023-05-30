@@ -12,6 +12,7 @@
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4.h>
 #include <linux/time.h>
+#include <linux/timekeeping.h>
 
 #define XMAS_SCAN_THRESH 5
 #define NULL_SCAN_THRESH 10
@@ -28,7 +29,7 @@ static struct nf_hook_ops nfho;
 typedef struct packet_history
 {
 	u32 src_addr;
-	struct timespec timestamp; //getnstimeofday(&timestamp) 	
+	ktime_t timestamp; //getnstimeofday(&timestamp) 	
 	u16 counter;
 } p_history;
 	//timestamp is only supposed to hold the time, not be used in the function.
@@ -60,10 +61,15 @@ static unsigned int scan_detect_hook_func(void* priv,
 {
 	struct iphdr* iph;
 	struct tcphdr* tcph;
-	u32 s_addr, d_addr;
-	struct timespec current_packet_time, time_diff;
-	long time_diff_sec;
-	current_packet_time = ktime_to_timespec(ktime_get_real()); //gets time
+	u32 s_addr;
+
+	//struct timespec current_packet_time, time_diff;
+	//long time_diff_sec;
+	//current_packet_time = ktime_to_timespec(ktime_get_real()); //gets time
+
+	ktime_t current_packet_time;
+	s64 time_diff_nano, time_diff_sec;
+	current_packet_time = ktime_get_real();
 
 	if(!sk_buff) return NF_ACCEPT; //if packet's empty
 	iph = ip_hdr(sk_buff);
@@ -76,9 +82,10 @@ static unsigned int scan_detect_hook_func(void* priv,
 		//instead of printing an alert to kernel logs, implement an acoustic/visual alarm
 		//same address, same TCP flag
 		
-		time_diff = timespec_sub(current_packet_time, syn_history.timestamp);
-		time_diff_sec = time_diff.tv_sec;
-
+		//time_diff = timespec_sub(current_packet_time, syn_history.timestamp);
+		//time_diff_sec = time_diff.tv_sec;
+		time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, syn_history.timestamp));
+		time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
 		if(time_diff_sec <= SCAN_TIMEOUT)
 		//current time - last packet time from host
 		{
