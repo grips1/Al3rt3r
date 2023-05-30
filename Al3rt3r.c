@@ -28,7 +28,7 @@ static struct nf_hook_ops nfho;
 typedef struct packet_history
 {
 	u32 src_addr;
-	ktime_t timestamp; //getnstimeofday(&timestamp) 	
+	struct timespec timestamp; //getnstimeofday(&timestamp) 	
 	u16 counter;
 } p_history;
 	//timestamp is only supposed to hold the time, not be used in the function.
@@ -61,8 +61,10 @@ static unsigned int scan_detect_hook_func(void* priv,
 	struct iphdr* iph;
 	struct tcphdr* tcph;
 	u32 s_addr, d_addr;
-	ktime_t current_packet_time;
-	current_packet_time = ktime_get_real(); //seconds since unix epoch
+	struct timespec current_packet_time, time_diff;
+	long time_diff_sec;
+	current_packet_time = ktime_to_timespec(ktime_get_real()); //gets time
+
 	if(!sk_buff) return NF_ACCEPT; //if packet's empty
 	iph = ip_hdr(sk_buff);
 	if(iph->protocol != IPPROTO_TCP) return NF_ACCEPT; //if not TCP
@@ -72,11 +74,16 @@ static unsigned int scan_detect_hook_func(void* priv,
 	if(tcph->syn && !(tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin) && syn_history.src_addr == s_addr)//SYN only TCP packet
 	{
 		//instead of printing an alert to kernel logs, implement an acoustic/visual alarm
-		if((current_packet_time - syn_history.timestamp) <= SCAN_TIMEOUT)
+		//same address, same TCP flag
+		
+		time_diff = timespec_sub(current_packet_time, syn_history.timestamp);
+		time_diff_sec = time_diff.tv_sec;
+
+		if(time_diff_sec <= SCAN_TIMEOUT)
 		//current time - last packet time from host
 		{
 			syn_history.counter++;
-			if(syn_history.counter == SYN_SCAN_THRESH) //SYN_SCAN_THRESH amount of SYN packets from single host
+			if(syn_history.counter >= SYN_SCAN_THRESH) //SYN_SCAN_THRESH amount of SYN packets from single host
 			{
 				printk(KERN_ALERT "!!!!!\nSYN Scan DETECTED\n!!!!!");
 				prints(syn_history.src_addr);
@@ -86,7 +93,7 @@ static unsigned int scan_detect_hook_func(void* priv,
 	}
 	else //for new source host, new address, time and counter set.
 	{
-		syn_history.timestamp = current_packet_time;
+		syn_history.timestamp = current_packet_time; //sets the time
 		syn_history.src_addr = s_addr;
 		syn_history.counter = 0;
 	}
@@ -122,3 +129,18 @@ static void __exit custom_exit(void)
 }
 module_init(custom_init);
 module_exit(custom_exit);
+
+/*Important comment from GPT for tomorrow:
+Q:So when NF_INET_PRE_ROUTING is the hook point defined,
+the module intercepts all packets that their destination is the same as the local network interface?
+
+A:No, when the NF_INET_PRE_ROUTING hook point is defined, the module intercepts all packets that are entering the network stack, regardless of their destination. 
+The hook function is invoked for each incoming packet before any routing decisions are made.
+
+At the NF_INET_PRE_ROUTING hook point, the module has the opportunity to inspect and modify the intercepted packets before the kernel performs any further processing, such as routing or forwarding. 
+This allows the module to analyze packet headers, perform security checks, or implement other custom behavior.
+
+The hook function is called for all packets arriving on any network interface, regardless of their destination.
+ It is important to note that the hook function is called in the context of the networking stack, before any routing decisions have been made based on the packet's destination address. 
+ Therefore, it provides an early interception point for packet processing in the kernel.
+*/
