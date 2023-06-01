@@ -1,7 +1,3 @@
-//implement reset feature that resets the packet counters to detect future scans.
-//We need to add a time gap for scans to avoid setting off a dozen false positives.
-//If the time diff between the packets is less than 5 seconds?
-//So if(current_time_of_current_packet - syn_history.timestamp <= 5 sec) counter++;		?
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/init.h>
@@ -29,12 +25,9 @@ static struct nf_hook_ops nfho;
 typedef struct packet_history
 {
 	u32 src_addr;
-	ktime_t timestamp; //getnstimeofday(&timestamp) 	
+	ktime_t timestamp; 	
 	u16 counter;
 } p_history;
-	//timestamp is only supposed to hold the time, not be used in the function.
-	//ktime_t? ^ apparently an ordinary unsigned long int ought to do it.	
-	//why not make both current_packet_time and p_history.timestamp struct timespecs and just use the sec members?
 
 p_history syn_history,
 		  fin_history,
@@ -56,11 +49,9 @@ static unsigned int scan_detect_hook_func(void* priv,
 	struct iphdr* iph;
 	struct tcphdr* tcph;
 	u32 s_addr;
-
 	ktime_t current_packet_time;
 	s64 time_diff_nano, time_diff_sec;
 	current_packet_time = ktime_get_real();
-
 	if(!sk_buff) return NF_ACCEPT;
 	iph = ip_hdr(sk_buff);
 	if(iph->protocol != IPPROTO_TCP) return NF_ACCEPT;
@@ -176,7 +167,6 @@ static void __exit custom_exit(void)
 }
 module_init(custom_init);
 module_exit(custom_exit);
-
 
 /* 
 -_-_-_- Comments/Additional(and unnecessary) features -_-_-_-
