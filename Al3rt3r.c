@@ -65,103 +65,98 @@ static unsigned int detection_logic(void* priv,
 	tcph = tcp_hdr(sk_buff);
 	s_addr = ntohl(iph->saddr);
 
-	if(tcph->syn && !(tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin) && syn_history.src_addr == s_addr)//SYN scan
+	if(tcph->syn && !(tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin))//SYN scan
 	{
-		time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, syn_history.timestamp));
-		time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
-		if(time_diff_sec <= SCAN_TIMEOUT)
+		if(syn_history.src_addr == s_addr)
 		{
-			syn_history.counter++;
-			if(syn_history.counter >= SYN_SCAN_THRESH)
+			time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, syn_history.timestamp));
+			time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
+			if(time_diff_sec <= SCAN_TIMEOUT)
 			{
-				printk(KERN_WARNING "-_-_-_-SYN Scan DETECTED-_-_-_-");
-				prints(syn_history.src_addr);
-				syn_history.counter = 0;
+				syn_history.counter++;
+				if(syn_history.counter >= SYN_SCAN_THRESH)
+				{
+					printk(KERN_WARNING "-_-_-_-SYN Scan DETECTED-_-_-_-");
+					prints(syn_history.src_addr);
+					syn_history.counter = 0;
+				}
 			}
 		}
-	}
-	else
-	{
-		setparams(s_addr, current_packet_time, &syn_history);
-		/*
-		syn_history.timestamp = current_packet_time;
-		syn_history.src_addr = s_addr;
-		syn_history.counter = 0;
-		*/
-	}
-	if(!(tcph->syn ||tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin) && null_history.src_addr == s_addr) //NULL scan
-	{
-		time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, null_history.timestamp));
-		time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
-		if(time_diff_sec <= SCAN_TIMEOUT)
+		else
 		{
-			null_history.counter++;
-			if(null_history.counter >= NULL_SCAN_THRESH)
-			{
-				printk(KERN_WARNING "-_-_-_-NULL Scan DETECTED-_-_-_-");
-				prints(null_history.src_addr);
-				null_history.counter = 0;
-			}
+			setparams(s_addr, current_packet_time, &syn_history);
 		}
 	}
-	else
+	
+	if(!(tcph->syn ||tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin)) //NULL scan
 	{
-		setparams(s_addr, current_packet_time, &null_history);
-		/*
-		null_history.timestamp = current_packet_time;
-		null_history.src_addr = s_addr;
-		null_history.counter = 0;
-		*/
-	}
-	if(tcph->fin && tcph->urg && tcph->psh && !(tcph->ack || tcph->rst || tcph->syn) && xmas_history.src_addr == s_addr) //XMAS scan
-	{
-		time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, xmas_history.timestamp));
-		time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
-		if(time_diff_sec <= SCAN_TIMEOUT)
+		if(null_history.src_addr == s_addr)
 		{
-			xmas_history.counter++;
-			if(xmas_history.counter >= XMAS_SCAN_THRESH)
+			time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, null_history.timestamp));
+			time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
+			if(time_diff_sec <= SCAN_TIMEOUT)
 			{
-				printk(KERN_WARNING "-_-_-_-XMAS Scan DETECTED-_-_-_-");
-				prints(xmas_history.src_addr);
-				xmas_history.counter = 0;
+				null_history.counter++;
+				if(null_history.counter >= NULL_SCAN_THRESH)
+				{
+					printk(KERN_WARNING "-_-_-_-NULL Scan DETECTED-_-_-_-");
+					prints(null_history.src_addr);
+					null_history.counter = 0;
+				}
 			}
 		}
-	}
-	else
-	{
-		setparams(s_addr, current_packet_time, &xmas_history);
-		/*
-		xmas_history.timestamp = current_packet_time;
-		xmas_history.src_addr = s_addr;
-		xmas_history.counter = 0;
-		*/
-	}
-	if(tcph->fin && !(tcph->urg || tcph->psh || tcph->ack || tcph->rst || tcph->syn) && fin_history.src_addr == s_addr) //FIN scan
-	{
-		time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, fin_history.timestamp));
-		time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
-		if(time_diff_sec <= SCAN_TIMEOUT)
+		else
 		{
-			fin_history.counter++;
-			if(fin_history.counter >= FIN_SCAN_THRESH)
-			{
-				printk(KERN_WARNING "-_-_-_-FIN Scan DETECTED-_-_-_-");
-				prints(fin_history.src_addr);
-				fin_history.counter = 0;
-			}
+			setparams(s_addr, current_packet_time, &null_history);
 		}
 	}
-	else
+	if(tcph->fin && tcph->urg && tcph->psh && !(tcph->ack || tcph->rst || tcph->syn)) //XMAS scan
 	{
-		setparams(s_addr, current_packet_time, &fin_history);
-		/*
-		fin_history.timestamp = current_packet_time;
-		fin_history.src_addr = s_addr;
-		fin_history.counter = 0;
-		*/
+		if(xmas_history.src_addr == s_addr)
+		{
+
+			time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, xmas_history.timestamp));
+			time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
+			if(time_diff_sec <= SCAN_TIMEOUT)
+			{
+				xmas_history.counter++;
+				if(xmas_history.counter >= XMAS_SCAN_THRESH)
+				{
+					printk(KERN_WARNING "-_-_-_-XMAS Scan DETECTED-_-_-_-");
+					prints(xmas_history.src_addr);
+					xmas_history.counter = 0;
+				}
+			}
+		}
+		else
+		{
+			setparams(s_addr, current_packet_time, &xmas_history);
+		}
 	}
-		return NF_ACCEPT;
+	if(tcph->fin && !(tcph->urg || tcph->psh || tcph->ack || tcph->rst || tcph->syn)) //FIN scan
+	{
+		if(fin_history.src_addr == s_addr)
+		{
+
+			time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, fin_history.timestamp));
+			time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
+			if(time_diff_sec <= SCAN_TIMEOUT)
+			{
+				fin_history.counter++;
+				if(fin_history.counter >= FIN_SCAN_THRESH)
+				{
+					printk(KERN_WARNING "-_-_-_-FIN Scan DETECTED-_-_-_-");
+					prints(fin_history.src_addr);
+					fin_history.counter = 0;
+				}
+			}
+		}
+		else
+		{
+			setparams(s_addr, current_packet_time, &fin_history);
+		}
+	}
+	return NF_ACCEPT;
 }
 static int __init custom_init(void)
 { 
