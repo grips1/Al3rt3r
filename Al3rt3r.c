@@ -22,6 +22,7 @@ MODULE_DESCRIPTION("Nmap-specific IPS");
 
 static struct nf_hook_ops nfho;
 
+
 typedef struct packet_history
 {
 	u32 src_addr;
@@ -41,10 +42,16 @@ void prints(u32 address)
     printk(KERN_WARNING "Deteced scan from source address:%pI4\n", &addr);
 }
 
+void setparams(struct iphdr, ktime_t current_time, struct* p_history)  
+{
+	p_histroy->src_addr = iphdr->saddr;
+	p_history->timestamp = current_time;
+	p_history->counter = 0;
+}
 
-static unsigned int scan_detect_hook_func(void* priv,
-										  struct sk_buff* sk_buff,
-										  const struct nf_hook_state* state)
+static unsigned int detection_logic(void* priv,
+									struct sk_buff* sk_buff,
+									const struct nf_hook_state* state)
 {
 	struct iphdr* iph;
 	struct tcphdr* tcph;
@@ -75,9 +82,12 @@ static unsigned int scan_detect_hook_func(void* priv,
 	}
 	else
 	{
+		setparams(iphdr, current_packet_time, &syn_history);
+		/*
 		syn_history.timestamp = current_packet_time;
 		syn_history.src_addr = s_addr;
 		syn_history.counter = 0;
+		*/
 	}
 	if(!(tcph->syn ||tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin) && null_history.src_addr == s_addr) //NULL scan
 	{
@@ -96,9 +106,12 @@ static unsigned int scan_detect_hook_func(void* priv,
 	}
 	else
 	{
+		setparams(iphdr, current_packet_time, &null_history);
+		/*
 		null_history.timestamp = current_packet_time;
 		null_history.src_addr = s_addr;
 		null_history.counter = 0;
+		*/
 	}
 	if(tcph->fin && tcph->urg && tcph->psh && !(tcph->ack || tcph->rst || tcph->syn) && xmas_history.src_addr == s_addr) //XMAS scan
 	{
@@ -117,9 +130,12 @@ static unsigned int scan_detect_hook_func(void* priv,
 	}
 	else
 	{
+		setparams(iphdr, current_packet_time, &xmas_history);
+		/*
 		xmas_history.timestamp = current_packet_time;
 		xmas_history.src_addr = s_addr;
 		xmas_history.counter = 0;
+		*/
 	}
 	if(tcph->fin && !(tcph->urg || tcph->psh || tcph->ack || tcph->rst || tcph->syn) && fin_history.src_addr == s_addr) //FIN scan
 	{
@@ -138,16 +154,19 @@ static unsigned int scan_detect_hook_func(void* priv,
 	}
 	else
 	{
+		setparams(iphdr, current_packet_time, &fin_history);
+		/*
 		fin_history.timestamp = current_packet_time;
 		fin_history.src_addr = s_addr;
 		fin_history.counter = 0;
+		*/
 	}
 		return NF_ACCEPT;
 }
 static int __init custom_init(void)
 { 
 	int err;
-	nfho.hook = (nf_hookfn *) scan_detect_hook_func;
+	nfho.hook = (nf_hookfn *) detection_logic;
 	nfho.hooknum = NF_INET_PRE_ROUTING;
 	nfho.pf = PF_INET;
 	nfho.priority = NF_IP_PRI_FIRST;
@@ -174,5 +193,5 @@ destination detection:
 	d_addr = ntohl(iph->daddr);
 	*add another variable to p_history struct to hold destination address(dst_addr, in this example)
 	if(syn_history.dst_addr = d_addr)
-		//logic necessary...
+		//logic
 */
