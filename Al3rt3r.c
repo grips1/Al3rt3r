@@ -35,7 +35,7 @@ p_history syn_history,
 		  xmas_history,
 		  null_history;
 
-void prints(u32 address)
+void prints(u32 address) //also change to s_addr
 {
     struct in_addr addr;
     addr.s_addr = htonl(address);
