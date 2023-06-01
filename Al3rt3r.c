@@ -39,14 +39,14 @@ void prints(u32 address)
 {
     struct in_addr addr;
     addr.s_addr = htonl(address);
-    printk(KERN_WARNING "Deteced scan from source address:%pI4\n", &addr);
+    printk(KERN_WARNING "Detected scan from source address:%pI4\n", &addr);
 }
 
-void setparams(struct iphdr, ktime_t current_time, struct* p_history)  
+void setparams(u32 src_address, ktime_t current_time, p_history* packet_his)  
 {
-	p_histroy->src_addr = iphdr->saddr;
-	p_history->timestamp = current_time;
-	p_history->counter = 0;
+	packet_his->src_addr = src_address;
+	packet_his->timestamp = current_time;
+	packet_his->counter = 0;
 }
 
 static unsigned int detection_logic(void* priv,
@@ -82,7 +82,7 @@ static unsigned int detection_logic(void* priv,
 	}
 	else
 	{
-		setparams(iphdr, current_packet_time, &syn_history);
+		setparams(s_addr, current_packet_time, &syn_history);
 		/*
 		syn_history.timestamp = current_packet_time;
 		syn_history.src_addr = s_addr;
@@ -106,7 +106,7 @@ static unsigned int detection_logic(void* priv,
 	}
 	else
 	{
-		setparams(iphdr, current_packet_time, &null_history);
+		setparams(s_addr, current_packet_time, &null_history);
 		/*
 		null_history.timestamp = current_packet_time;
 		null_history.src_addr = s_addr;
@@ -130,7 +130,7 @@ static unsigned int detection_logic(void* priv,
 	}
 	else
 	{
-		setparams(iphdr, current_packet_time, &xmas_history);
+		setparams(s_addr, current_packet_time, &xmas_history);
 		/*
 		xmas_history.timestamp = current_packet_time;
 		xmas_history.src_addr = s_addr;
@@ -154,7 +154,7 @@ static unsigned int detection_logic(void* priv,
 	}
 	else
 	{
-		setparams(iphdr, current_packet_time, &fin_history);
+		setparams(s_addr, current_packet_time, &fin_history);
 		/*
 		fin_history.timestamp = current_packet_time;
 		fin_history.src_addr = s_addr;
