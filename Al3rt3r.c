@@ -14,10 +14,10 @@
 #include <linux/time.h>
 #include <linux/timekeeping.h>
 
-#define XMAS_SCAN_THRESH 5
-#define NULL_SCAN_THRESH 10
-#define FIN_SCAN_THRESH 10
-#define SYN_SCAN_THRESH 50
+#define XMAS_SCAN_THRESH 200
+#define NULL_SCAN_THRESH 200
+#define FIN_SCAN_THRESH 200
+#define SYN_SCAN_THRESH 200
 #define SCAN_TIMEOUT 5
 
 MODULE_LICENSE("GPL");
@@ -52,65 +52,105 @@ void prints(u32 address)
 static unsigned int scan_detect_hook_func(void* priv,
 										  struct sk_buff* sk_buff,
 										  const struct nf_hook_state* state)
-
-								/*const struct nf_hook_ops *ops, //handler? 
-								struct sk_buff *sk_buff, //captured packet
-								const struct net_device *in, //incoming interface
-								const struct net_device *out, //outgoing interface
-								int (*okfn)(struct sk_buff *)) //?? What the fuck is this*/
 {
 	struct iphdr* iph;
 	struct tcphdr* tcph;
 	u32 s_addr;
 
-	//struct timespec current_packet_time, time_diff;
-	//long time_diff_sec;
-	//current_packet_time = ktime_to_timespec(ktime_get_real()); //gets time
-
 	ktime_t current_packet_time;
 	s64 time_diff_nano, time_diff_sec;
 	current_packet_time = ktime_get_real();
 
-	if(!sk_buff) return NF_ACCEPT; //if packet's empty
+	if(!sk_buff) return NF_ACCEPT;
 	iph = ip_hdr(sk_buff);
-	if(iph->protocol != IPPROTO_TCP) return NF_ACCEPT; //if not TCP
+	if(iph->protocol != IPPROTO_TCP) return NF_ACCEPT;
 	tcph = tcp_hdr(sk_buff);
 	s_addr = ntohl(iph->saddr);
-	//d_addr = ntohl(iph->daddr);
-	if(tcph->syn && !(tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin) && syn_history.src_addr == s_addr)//SYN only TCP packet
+
+	if(tcph->syn && !(tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin) && syn_history.src_addr == s_addr)//SYN scan
 	{
-		//instead of printing an alert to kernel logs, implement an acoustic/visual alarm
-		//same address, same TCP flag
-		
-		//time_diff = timespec_sub(current_packet_time, syn_history.timestamp);
-		//time_diff_sec = time_diff.tv_sec;
 		time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, syn_history.timestamp));
 		time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
 		if(time_diff_sec <= SCAN_TIMEOUT)
-		//current time - last packet time from host
 		{
 			syn_history.counter++;
-			if(syn_history.counter >= SYN_SCAN_THRESH) //SYN_SCAN_THRESH amount of SYN packets from single host
+			if(syn_history.counter >= SYN_SCAN_THRESH)
 			{
-				printk(KERN_ALERT "!!!!!\nSYN Scan DETECTED\n!!!!!");
+				printk(KERN_WARNING "-_-_-_-SYN Scan DETECTED-_-_-_-");
 				prints(syn_history.src_addr);
 				syn_history.counter = 0;
 			}
 		}
 	}
-	else //for new source host, new address, time and counter set.
+	else
 	{
-		syn_history.timestamp = current_packet_time; //sets the time
+		syn_history.timestamp = current_packet_time;
 		syn_history.src_addr = s_addr;
 		syn_history.counter = 0;
 	}
-
-
-/*		if(!(tcph->syn || tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin))//NULL scan
+	if(!(tcph->syn ||tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin) && null_history.src_addr == s_addr) //NULL scan
+	{
+		time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, null_history.timestamp));
+		time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
+		if(time_diff_sec <= SCAN_TIMEOUT)
 		{
-
+			null_history.counter++;
+			if(null_history.counter >= NULL_SCAN_THRESH)
+			{
+				printk(KERN_WARNING "-_-_-_-NULL Scan DETECTED-_-_-_-");
+				prints(null_history.src_addr);
+				null_history.counter = 0;
+			}
 		}
-*/
+	}
+	else
+	{
+		null_history.timestamp = current_packet_time;
+		null_history.src_addr = s_addr;
+		null_history.counter = 0;
+	}
+	if(tcph->fin && tcph->urg && tcph->psh && !(tcph->ack || tcph->rst || tcph->syn) && xmas_history.src_addr == s_addr) //XMAS scan
+	{
+		time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, xmas_history.timestamp));
+		time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
+		if(time_diff_sec <= SCAN_TIMEOUT)
+		{
+			xmas_history.counter++;
+			if(xmas_history.counter >= XMAS_SCAN_THRESH)
+			{
+				printk(KERN_WARNING "-_-_-_-XMAS Scan DETECTED-_-_-_-");
+				prints(xmas_history.src_addr);
+				xmas_history.counter = 0;
+			}
+		}
+	}
+	else
+	{
+		xmas_history.timestamp = current_packet_time;
+		xmas_history.src_addr = s_addr;
+		xmas_history.counter = 0;
+	}
+	if(tcph->fin && !(tcph->urg || tcph->psh || tcph->ack || tcph->rst || tcph->syn) && fin_history.src_addr == s_addr) //FIN scan
+	{
+		time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, fin_history.timestamp));
+		time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
+		if(time_diff_sec <= SCAN_TIMEOUT)
+		{
+			fin_history.counter++;
+			if(fin_history.counter >= FIN_SCAN_THRESH)
+			{
+				printk(KERN_WARNING "-_-_-_-FIN Scan DETECTED-_-_-_-");
+				prints(fin_history.src_addr);
+				fin_history.counter = 0;
+			}
+		}
+	}
+	else
+	{
+		fin_history.timestamp = current_packet_time;
+		fin_history.src_addr = s_addr;
+		fin_history.counter = 0;
+	}
 		return NF_ACCEPT;
 }
 static int __init custom_init(void)
@@ -137,17 +177,12 @@ static void __exit custom_exit(void)
 module_init(custom_init);
 module_exit(custom_exit);
 
-/*Important comment from GPT for tomorrow:
-Q:So when NF_INET_PRE_ROUTING is the hook point defined,
-the module intercepts all packets that their destination is the same as the local network interface?
 
-A:No, when the NF_INET_PRE_ROUTING hook point is defined, the module intercepts all packets that are entering the network stack, regardless of their destination. 
-The hook function is invoked for each incoming packet before any routing decisions are made.
-
-At the NF_INET_PRE_ROUTING hook point, the module has the opportunity to inspect and modify the intercepted packets before the kernel performs any further processing, such as routing or forwarding. 
-This allows the module to analyze packet headers, perform security checks, or implement other custom behavior.
-
-The hook function is called for all packets arriving on any network interface, regardless of their destination.
- It is important to note that the hook function is called in the context of the networking stack, before any routing decisions have been made based on the packet's destination address. 
- Therefore, it provides an early interception point for packet processing in the kernel.
+/* 
+-_-_-_- Comments/Additional(and unnecessary) features -_-_-_-
+destination detection:
+	d_addr = ntohl(iph->daddr);
+	*add another variable to p_history struct to hold destination address(dst_addr, in this example)
+	if(syn_history.dst_addr = d_addr)
+		//logic necessary...
 */
