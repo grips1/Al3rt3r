@@ -85,8 +85,8 @@ static unsigned int detection_logic(void* priv,
 					prints(syn_history.src_addr);
 					syn_history.counter = 0;
 				}
-			settime(current_packet_time, &syn_history);
 			}
+			settime(current_packet_time, &syn_history);
 		}
 		else
 		{
@@ -110,7 +110,7 @@ static unsigned int detection_logic(void* priv,
 					null_history.counter = 0;
 				}
 			}
-		settime(current_packet_time, &null_history);
+			settime(current_packet_time, &null_history);
 		}
 		else
 		{
@@ -157,7 +157,7 @@ static unsigned int detection_logic(void* priv,
 					fin_history.counter = 0;
 				}
 			}
-		settime(current_packet_time, &fin_history);
+			settime(current_packet_time, &fin_history);
 		}
 		else
 		{
@@ -179,13 +179,13 @@ static int __init custom_init(void)
 		printk(KERN_WARNING "Hook registration error returned with value of:%d\n", err); 
 		return -1;
 	}
-	printk(KERN_ALERT "Anti-Nmap LOADED\n");
+	printk(KERN_ALERT "Al3rt3r LOADED\n");
 	return 0;	
 }
 static void __exit custom_exit(void) 
 { 
 	nf_unregister_net_hook(&init_net, &nfho);
-	printk(KERN_ALERT "Anti-Nmap UN-LOADED\n");	
+	printk(KERN_ALERT "Al3rt3r UN-LOADED\n");	
 }
 module_init(custom_init);
 module_exit(custom_exit);
