@@ -51,12 +51,9 @@ void setparams(u32 src_address, ktime_t current_time, p_history* packet_his)
 void settime(ktime_t time, p_history* packet)
 {
 	packet->timestamp = time;
-
 }
 
-static unsigned int detection_logic(void* priv,
-									struct sk_buff* sk_buff,
-									const struct nf_hook_state* state)
+static unsigned int detection_logic(void* priv, struct sk_buff* sk_buff, const struct nf_hook_state* state)
 {
 	struct iphdr* iph;
 	struct tcphdr* tcph;
@@ -134,8 +131,8 @@ static unsigned int detection_logic(void* priv,
 					xmas_history.counter = 0;
 				}
 			}
+			settime(current_packet_time, &xmas_history);
 		}
-		settime(current_packet_time, &xmas_history);
 		else
 		{
 			setparams(s_addr, current_packet_time, &xmas_history);
