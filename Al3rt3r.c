@@ -48,6 +48,11 @@ void setparams(u32 src_address, ktime_t current_time, p_history* packet_his)
 	packet_his->timestamp = current_time;
 	packet_his->counter = 0;
 }
+void settime(ktime_t time, p_history* packet)
+{
+	packet->timestamp = time;
+
+}
 
 static unsigned int detection_logic(void* priv,
 									struct sk_buff* sk_buff,
@@ -81,6 +86,7 @@ static unsigned int detection_logic(void* priv,
 					syn_history.counter = 0;
 				}
 			}
+			settime(current_packet_time, &syn_history);
 		}
 		else
 		{
@@ -88,7 +94,7 @@ static unsigned int detection_logic(void* priv,
 		}
 	}
 	
-	if(!(tcph->syn ||tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin)) //NULL scan
+	if(!(tcph->syn || tcph->urg || tcph->ack || tcph->psh || tcph->rst || tcph->fin)) //NULL scan
 	{
 		if(null_history.src_addr == s_addr)
 		{
@@ -105,6 +111,7 @@ static unsigned int detection_logic(void* priv,
 				}
 			}
 		}
+		settime(current_packet_time, &null_history);
 		else
 		{
 			setparams(s_addr, current_packet_time, &null_history);
@@ -128,6 +135,7 @@ static unsigned int detection_logic(void* priv,
 				}
 			}
 		}
+		settime(current_packet_time, &xmas_history);
 		else
 		{
 			setparams(s_addr, current_packet_time, &xmas_history);
@@ -137,7 +145,6 @@ static unsigned int detection_logic(void* priv,
 	{
 		if(fin_history.src_addr == s_addr)
 		{
-
 			time_diff_nano = ktime_to_ns(ktime_sub(current_packet_time, fin_history.timestamp));
 			time_diff_sec = div_s64(time_diff_nano, NSEC_PER_SEC);
 			if(time_diff_sec <= SCAN_TIMEOUT)
@@ -151,6 +158,7 @@ static unsigned int detection_logic(void* priv,
 				}
 			}
 		}
+		settime(current_packet_time, &fin_history);
 		else
 		{
 			setparams(s_addr, current_packet_time, &fin_history);
