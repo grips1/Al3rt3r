@@ -85,8 +85,8 @@ static unsigned int detection_logic(void* priv,
 					prints(syn_history.src_addr);
 					syn_history.counter = 0;
 				}
-			}
 			settime(current_packet_time, &syn_history);
+			}
 		}
 		else
 		{
@@ -110,8 +110,8 @@ static unsigned int detection_logic(void* priv,
 					null_history.counter = 0;
 				}
 			}
-		}
 		settime(current_packet_time, &null_history);
+		}
 		else
 		{
 			setparams(s_addr, current_packet_time, &null_history);
@@ -157,8 +157,8 @@ static unsigned int detection_logic(void* priv,
 					fin_history.counter = 0;
 				}
 			}
-		}
 		settime(current_packet_time, &fin_history);
+		}
 		else
 		{
 			setparams(s_addr, current_packet_time, &fin_history);
