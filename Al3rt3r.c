@@ -1,9 +1,3 @@
-/*
-#include <linux/uaccess.h>
-#include <linux/fs.h>
-#include <linux/proc_fs.h>
-#include <linux/time.h>
-*/
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/init.h>
@@ -188,12 +182,3 @@ static void __exit custom_exit(void)
 }
 module_init(custom_init);
 module_exit(custom_exit);
-
-/* 
--_-_-_- Comments/Additional(and unnecessary) features -_-_-_-
-destination detection:
-	d_addr = ntohl(iph->daddr);
-	*add another variable to p_history struct to hold destination address(dst_addr, in this example)
-	if(syn_history.dst_addr = d_addr)
-		//logic
-*/
